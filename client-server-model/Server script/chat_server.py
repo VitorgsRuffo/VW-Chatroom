@@ -56,6 +56,7 @@ class ChatServer:
     def run(self):
         while True:
             conn, addr = self.socket.accept()
+
             self.clients.append(conn)
             print(addr[0] + " connected")
             start_new_thread(self.__client_thread,(conn, addr))
