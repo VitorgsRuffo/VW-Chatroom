@@ -10,7 +10,7 @@ class SocketChat:
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((ip, port))
         self.server_socket.listen(100)
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket = None
 
     def __menu(self):
         print("---------------------------")
@@ -25,20 +25,30 @@ class SocketChat:
         ip = input("Enter the IP you want to connect with:")
         port = int(input("Enter the port you want to connect with:"))
 
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print("Trying to connect...\n")
         self.client_socket.connect((ip, port))
+        # como quebrar esse connect??
+        # timeout maior no select.
 
         while True:
             sockets = [sys.stdin, self.client_socket]
+            read_sockets, write_socket, error_socket = select.select(sockets, [], [], 2.0)
 
-            read_sockets, write_socket, error_socket = select.select(sockets, [], [])
+            for input_file in read_sockets:
+                if input_file == self.client_socket:
 
-            for socket in read_sockets:
-                if socket == self.client_socket:
-                    message = socket.recv(2048).decode("ascii")
-                    print(message)
+                    message = input_file.recv(2048).decode("ascii")
+                    if message:
+                        print(message)
+                    else:
+                        self.client_socket.close()
+                        print("Connection closed.\nExiting chat...\n")
+                        return
                 else:
                     message = sys.stdin.readline()
-                    if message == "exit":
+                    if message == "exit\n":
+                        self.client_socket.close()
                         print("Exiting chat...")
                         return
 
@@ -46,7 +56,8 @@ class SocketChat:
                     formated_message = "<" + ip + "> " + message
                     bytes_sent = self.client_socket.send(formated_message.encode("ascii"))
                     if bytes_sent == 0:
-                        print("Connection closed...")
+                        self.client_socket.close()
+                        print("Connection closed.\nExiting chat...\n")
                         return
 
                     sys.stdout.write("<You>")
@@ -78,24 +89,31 @@ class SocketChat:
 
         while True:
             sockets = [sys.stdin, connection]
+            read_sockets, write_socket, error_socket = select.select(sockets, [], [], 2.0)
 
-            read_sockets, write_socket, error_socket = select.select(sockets, [], [])
+            for input_file in read_sockets:
+                if input_file == connection:
 
-            for socket in read_sockets:
-                if socket == connection:
-                    message = socket.recv(2048).decode('ascii')
-                    print(message)
+                    message = input_file.recv(2048).decode('ascii')
+                    if message:
+                        print(message)
+                    else:
+                        connection.close()
+                        print("Connection closed.\nExiting chat...\n")
+                        return
                 else:
                     message = sys.stdin.readline()
-                    if message == "exit":
+                    if message == "exit\n":
+                        connection.shutdown(socket.SHUT_RDWR)
+                        connection.close()
                         print("Exiting chat...")
                         return
 
                     formated_message = "<" + ip + "> " + message
-
-                    bytes_sent = self.client_socket.send(formated_message.encode('ascii'))
+                    bytes_sent = connection.send(formated_message.encode('ascii'))
                     if bytes_sent == 0:
-                        print("Connection closed...")
+                        connection.close()
+                        print("Connection closed.\nExiting chat...\n")
                         return
 
                     sys.stdout.write("<You>")
@@ -123,3 +141,13 @@ ip = input("Enter you computer's IP address:")
 port = int(input("Enter the port in which the application will run:"))
 chat = SocketChat(ip, port)
 chat.run()
+
+# to do list:
+# - vitor nao consegue hostear.
+# - formatacao do chat.
+# - tramento da rejeicao da conexao.
+#
+# Possivelmente serao resolvidos com threads:
+# - Escrita no chat esta cancelando.
+# - cancelar espera (host)
+# - cancelar conexao (client)
