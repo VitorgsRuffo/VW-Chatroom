@@ -1,3 +1,3 @@
 # VW-Chatroom
-This is a computer networks college assignment that aims to implement a chatroom application by using Python socket API.
+This is a computer networks university assignment that aims to implement a chatroom application by using Python socket API.
 
